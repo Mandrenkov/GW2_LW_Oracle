@@ -19,12 +19,14 @@ def main():
 			item = Item(row)
 			items.append(item)
 		except Exception, e:
+			#print "Item Creation Error:", e
 			pass
 
 	# Filter unwanted items
 	items = filter(lambda item: re.search(RE_ITEM, item.getTitle()), items)
 	for item in items:
-		c = item.getComponent("Ingredients")
+		c = item.getAttribute("Ingredients")
+		#print item
 		print c
 
 
