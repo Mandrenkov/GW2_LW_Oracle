@@ -2,63 +2,56 @@ from Util import *
 
 import re
 
-COLUMNS = ("Item", "Rarity", "Discipline(s)", "Rating", "Ingredients")
-
-class Attribute:
-	def __init__(self, name, html):
-		self.html = html
-		self.name = name
-		self.titles = []
-		self.quants = {}
-
-		for title in attText("title", html):
-			if len(self.titles) == 0 or self.titles[-1] != title:
-				self.titles.append(title)
-
-		quantities = tagText("dt", html)
-		for index, quantity in enumerate(quantities):
-			title = self.titles[index]
-			self.quants[title] = int(quantity)
-
-	def getQuantity(self, title):
-		return 0 if title not in self.quants else self.quants[title]
-
-	def getTitle(self):
-		return ", ".join(self.titles) if len(self.titles) > 0 else "<No Title>"
-
-	def getTitles(self):
-		return self.titles
-
-	def __str__(self):
-		s = "Attribute \"%s\": " % self.name
-
-		f = id
-		if len(self.quants) > 0:
-			f = lambda title: "%d x %s" % (self.quants[title], title)
-
-		s += ", ".join(map(f, self.titles))
-		return s
+#COLUMNS = ("Item", "Rarity", "Discipline(s)", "Rating", "Ingredients")
 
 class Item:
+	ELEMENTS = ("Name", "URL", "Ingredients")
+
 	def __init__(self, html):
 		self.html = html
-		self.attributes = {}
+		self.elements = {}
 
-		HTML_attributes = tagText("td", html)
-		for index, name in enumerate(COLUMNS):
-			self.attributes[name] = Attribute(name, HTML_attributes[index])
+		parser = AttributeParser()
+		HTML_columns = tagText("td", html)
 
-	def getAttribute(self, comp):
-		if comp not in COLUMNS:
-			return "Error: \"%s\" refers to an unknown attribute." % comp
+		if len(HTML_columns) != 5:
+			raise ValueError("HTML does not depict an Item.")
+
+		self.elements["Name"] = parser.findElements(["span", "a"], "title", HTML_columns[0])[0]
+		self.elements["URL"]  = parser.findElements(["span", "a"], "href" , HTML_columns[0])[0]
+
+		ingredient_names = parser.findElements(["div", "dl", "dd", "a"], None, HTML_columns[-1])
+		ingredient_quants = parser.findElements(["div", "dl", "dt"], None, HTML_columns[-1])
+		self.elements["Ingredients"] = [(q, n) for q, n in zip(ingredient_quants, ingredient_names)]
+
+		for element in Item.ELEMENTS:
+			assert self.elements[element]
+
+
+	def analyze(self):
+		print "Analyzing %s..." % str(self)
+
+		
+
+		print "Analysis Complete"
+
+	def getAttribute(self, att):
+		if att not in self.elements:
+			return "Error: \"%s\" refers to an unknown attribute." % att
 		else:
-			return self.attributes[comp]
+			return self.elements[att]
 
 	def getAttributes(self):
-		return self.attributes
+		return self.elements
 
-	def getTitle(self):
-		return self.attributes["Item"].getTitle()
+	def getName(self):
+		return self.elements["Name"]
+
+	def getURL(self):
+		return self.elements["URL"]
 
 	def __str__(self):
-		return "Item \"%s\"" % self.getTitle()
+		s = "Item \"%s\"\n" % self.elements["Name"]
+		for att in sorted(self.elements):
+			s += "\t%s: %s\n" % (att, self.elements[att])
+		return s

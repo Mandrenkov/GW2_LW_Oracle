@@ -7,6 +7,7 @@ import re
 WIKI_PATH = "./LW_Wiki.html"
 RE_ITEM = r'^\s*[0-9]+\sSlot.*Leather\sPack$'
 
+
 def main():
 	# Read LW HTML
 	wikiText = readFile(WIKI_PATH)
@@ -23,11 +24,10 @@ def main():
 			pass
 
 	# Filter unwanted items
-	items = filter(lambda item: re.search(RE_ITEM, item.getTitle()), items)
-	for item in items:
-		c = item.getAttribute("Ingredients")
-		#print item
-		print c
+	items = filter(lambda item: re.search(RE_ITEM, item.getName()), items)
+
+	for i in items:
+		print i
 
 
 if __name__ == '__main__':
