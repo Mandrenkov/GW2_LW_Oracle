@@ -5,7 +5,7 @@ import re
 import traceback
 
 
-WIKI_PATH = "./HTML/LW_Wiki.html"
+WIKI_PATH = "./HTML/Static/LW_Wiki.html"
 RE_ITEM = r'^\s*[0-9]+\sSlot.*Leather\sPack$'
 
 
@@ -28,14 +28,14 @@ def main():
 	# Filter unwanted items
 	products = filter(lambda product: re.search(RE_ITEM, product.getName()), products)
 
-	for p in products:
-		p.analyze()
+	for product in products:
+		product.analyze()
 
-	#print items[0].findID()
-	#getItemHTML(items[1])
-	#parser = MyHTMLParser()
-	#parser.init()
-	#parser.feed(readFile("./HTMl/8_Slot_Rawhide_Leather_Pack.html"))
+	print
+	print "-"*20
+	print "Best Product"
+	print "------------\n"
+	max(products).analyze()
 
 
 if __name__ == '__main__':

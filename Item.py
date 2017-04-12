@@ -11,6 +11,7 @@ __metaclass__ = type
 class Item:
 	RE_ID = r'data-type="item" data-id="([0-9]+?)"'
 	RE_PRICE = r'id="%s-price" data-price="([0-9]+?)"'
+	RE_SQUARE = r'[A-Za-z]+\s(.*)\sSquare'
 
 	INFO_BASE_URL = "https://wiki.guildwars2.com/wiki/"
 	MARKET_BASE_URL = "https://www.gw2tp.com/item/"
@@ -24,6 +25,7 @@ class Item:
 		self.url_info = None
 		self.url_market = None
 		self.prices = None
+		self.ingredients = None
 
 		self.url_info = Item.INFO_BASE_URL + self.name.replace(" ", "_")
 
@@ -40,6 +42,30 @@ class Item:
 			return None
 
 		return self.ID
+
+	def findIngredients(self):
+		#TODO
+
+		if self.ingredients:
+			return self.ingredients
+
+		if self.ID == -1:
+			print "Warning: Unable to retrieve Item ingredients (Invalid ID)."
+			return None
+
+		self.ingredients = []
+
+		result = re.search(Item.RE_SQUARE, self.name)
+		if result:
+			name = result.group(1) + " Section"
+			quantity = 0
+			if   name == "Thick Leather Section"   : quantity = 4
+			elif name == "Hardened Leather Section": quantity = 3
+			else:                                    quantity = 2
+
+			self.ingredients = [(quantity, name)]
+
+		return self.ingredients
 
 	def findPrices(self):
 		if self.prices:
@@ -99,6 +125,7 @@ class Product(Item):
 
 	def __init__(self, html):
 		self.html = None
+		self.profit = None
 		self.elements = {}
 
 		parser = AttributeParser()
@@ -142,13 +169,35 @@ class Product(Item):
 				print "Failed to obtain Ingredient \"%s\" prices." % name
 				return None
 
-			ingredients.append((quantity, ingredient.prices["Buy"]))
-			print "\tIngredient \"%-25s\" Buy Price = %2d x %s" % (getShortName(name, 25), quantity, ingredient.prices["Buy"])
+			parent_price = ingredient.prices["Buy"]
+			print "\tIngredient \"%-25s\" Buy Price = %2d x %s" % (getShortName(name, 25), quantity, parent_price)
+			parent_price.scale(quantity)
+
+			min_price = parent_price
+
+			for subquantity, subname in ingredient.findIngredients():
+				subingredient = Item(subname)
+				if not subingredient.findID():
+					print "Failed to obtain Ingredient \"%s\" ID." % subname
+					return None
+
+				if not subingredient.findPrices():
+					print "Failed to obtain Ingredient \"%s\" prices." % subname
+					return None
+				
+				sub_price = subingredient.prices["Buy"]
+				print "\t\tIngredient \"%-25s\" Buy Price = %2d x %s" % (getShortName(subname, 25), subquantity, sub_price)
+				sub_price.scale(quantity*subquantity)
+
+				min_price = min(min_price, sub_price)
+				if min_price == sub_price:
+					print "\t\tNote: \"%s\" is cheaper than \"%s\"." % (subname, name)
+
+			ingredients.append(min_price)			
 
 		buy = Price(0)
-		for quantity, price in ingredients:
-			for q in xrange(quantity):
-				buy += price
+		for price in ingredients:
+			buy += price
 		
 		sell = self.prices["Sell"]
 
@@ -165,6 +214,8 @@ class Product(Item):
 
 		print "\tProfit = %s" % profit
 		print "Analysis Complete\n"
+
+		self.profit = profit
 
 	def getElement(self, att):
 		if att not in self.elements:
@@ -183,6 +234,12 @@ class Product(Item):
 
 	def getURL(self):
 		return self.elements["URL"]
+
+	def __lt__(self, other):
+		if not self.profit or self.profit < other.profit:
+			return True
+		else:
+			return False
 
 	def __str__(self):
 		s = "Product (ID %d)\n" % self.ID
