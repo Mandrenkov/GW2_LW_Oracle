@@ -2,9 +2,10 @@ from Util import *
 from Item import *
 
 import re
+import traceback
 
 
-WIKI_PATH = "./LW_Wiki.html"
+WIKI_PATH = "./HTML/LW_Wiki.html"
 RE_ITEM = r'^\s*[0-9]+\sSlot.*Leather\sPack$'
 
 
@@ -14,20 +15,27 @@ def main():
 	wikiText = wikiText.replace("\n"," ")
 
 	# Parse item data
-	items = []
+	products = []
 	for row in tagText("tr", wikiText):
 		try:
-			item = Item(row)
-			items.append(item)
-		except Exception, e:
-			#print "Item Creation Error:", e
+			product = Product(row)
+			products.append(product)
+		except ProductError, e:
 			pass
+		except Exception, e:
+			print traceback.format_exc()
 
 	# Filter unwanted items
-	items = filter(lambda item: re.search(RE_ITEM, item.getName()), items)
+	products = filter(lambda product: re.search(RE_ITEM, product.getName()), products)
 
-	for i in items:
-		print i
+	for p in products:
+		p.analyze()
+
+	#print items[0].findID()
+	#getItemHTML(items[1])
+	#parser = MyHTMLParser()
+	#parser.init()
+	#parser.feed(readFile("./HTMl/8_Slot_Rawhide_Leather_Pack.html"))
 
 
 if __name__ == '__main__':
