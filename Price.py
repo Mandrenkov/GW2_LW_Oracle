@@ -17,7 +17,7 @@ class Price:
 		return Price(int(self.price*tax))
 
 	def scale(self, factor):
-		self.price *= factor
+		return Price(int(self.price*factor))
 
 	def __add__(self, other):
 		return Price(self.price + other.price)

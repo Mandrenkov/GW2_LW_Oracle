@@ -2,41 +2,28 @@ from Util import *
 from Item import *
 
 import re
-import traceback
+import sys
 
-
-WIKI_PATH = "./HTML/Static/LW_Wiki.html"
-RE_ITEM = r'^\s*[0-9]+\sSlot.*Leather\sPack$'
+LW_PATH = "./HTML/Static/LW_Wiki.html"
+RE_ITEM = re.compile(r'"([0-9]+ Slot [A-Za-z]+ Leather Pack)"')
+RE_ITEM = re.compile(r'"([0-9A-Za-z\s]+? Pack)"')
 
 
 def main():
-	# Read LW HTML
-	wikiText = readFile(WIKI_PATH)
-	wikiText = wikiText.replace("\n"," ")
+	# Discover LW items
+	lw_text = readFile(LW_PATH)
+	item_names = sorted(set(text for text in RE_ITEM.findall(lw_text)))
+	items = []
 
-	# Parse item data
-	products = []
-	for row in tagText("tr", wikiText):
+	for name in item_names:
 		try:
-			product = Product(row)
-			products.append(product)
-		except ProductError, e:
+			items.append(Item(name))
+		except:
 			pass
-		except Exception, e:
-			print traceback.format_exc()
 
-	# Filter unwanted items
-	products = filter(lambda product: re.search(RE_ITEM, product.getName()), products)
-
-	for product in products:
-		product.analyze()
-
-	print
-	print "-"*20
-	print "Best Product"
-	print "------------\n"
-	max(products).analyze()
-
+	for item in sorted(items):
+		print item
+		print
 
 if __name__ == '__main__':
 	main()

@@ -2,253 +2,150 @@ from Price import *
 from Util import *
 
 import re
-
-
-__metaclass__ = type
-
+import time
 
 
 class Item:
-	RE_ID = r'data-type="item" data-id="([0-9]+?)"'
-	RE_PRICE = r'id="%s-price" data-price="([0-9]+?)"'
-	RE_SQUARE = r'[A-Za-z]+\s(.*)\sSquare'
+	RE_ID    = re.compile(r'data-type="item" data-id="([0-9]+?)"')
+	RE_BUY   = re.compile(r'id="buy-price" data-price="([0-9]+?)"')
+	RE_SELL  = re.compile(r'id="sell-price" data-price="([0-9]+?)"')
+	RE_QUANT = re.compile(r'<dt>\s*([0-9]+?)</dt>')
+	RE_ING   = re.compile(r'title="(.+?)"')
 
-	INFO_BASE_URL = "https://wiki.guildwars2.com/wiki/"
-	MARKET_BASE_URL = "https://www.gw2tp.com/item/"
+	INFO_URL = "https://wiki.guildwars2.com/wiki/"
+	MARKET_URL = "https://www.gw2tp.com/item/"
+
+	INFO_PATH = "./HTML/Info/"
+	MARKET_PATH = "./HTML/Market/"
 	
 	def __init__(self, name):
 		self.name = name
-
 		self.ID = -1
-		self.html_info = None
-		self.html_market = None
-		self.url_info = None
-		self.url_market = None
-		self.prices = None
-		self.ingredients = None
+		self.buy = None
+		self.buy_cache = None
+		self.sell = None
+		self.ingreds = []
 
-		self.url_info = Item.INFO_BASE_URL + self.name.replace(" ", "_")
+		self.__initID()
+		self.__initPrices()
+		self.__initIngreds()
 
-
-	def findID(self):
-		if self.ID != -1:
-			return self.ID
-
-		result = re.search(Item.RE_ID, self.getHTMLInfo())
+	def __initID(self):
+		html = self.__getHTML(self.getInfoPath(), self.getInfoURL())
+		result = re.search(Item.RE_ID, html)
 		if result:
 			self.ID = int(result.group(1))
 		else:
-			print "Warning: Unable to find Item ID."
-			return None
+			print "Error: Unable to find ID of Item \"%s\"." % self.name
+			raise Exception()
 
-		return self.ID
+	def __initPrices(self):
+		html = self.__getHTML(self.getMarketPath(), self.getMarketURL())
+		result_buy = re.search(Item.RE_BUY, html)
+		result_sell = re.search(Item.RE_SELL, html)
 
-	def findIngredients(self):
-		#TODO
+		if result_buy:
+			self.buy = Price(int(result_buy.group(1)))
+		else:
+			print "Warning: Unable to find buying price of Item \"%s\"." % self.name
 
-		if self.ingredients:
-			return self.ingredients
+		if result_sell:
+			self.sell = Price(int(result_sell.group(1)))
+		else:
+			print "Warning: Unable to find selling price of Item \"%s\"." % self.name
 
-		if self.ID == -1:
-			print "Warning: Unable to retrieve Item ingredients (Invalid ID)."
-			return None
+	def __initIngreds(self):
+		self.ingreds = []
 
-		self.ingredients = []
+		START_LINE = '<div class="ingredients" style="padding-left:1em">'
+		END_LINE   = '</div><div class="plainlinks"'
 
-		result = re.search(Item.RE_SQUARE, self.name)
-		if result:
-			name = result.group(1) + " Section"
-			quantity = 0
-			if   name == "Thick Leather Section"   : quantity = 4
-			elif name == "Hardened Leather Section": quantity = 3
-			else:                                    quantity = 2
+		try:
+			html = self.__getHTML(self.getInfoPath(), self.getInfoURL())
+			html_slice = html[html.index(START_LINE) + len(START_LINE) : html.index(END_LINE)]
 
-			self.ingredients = [(quantity, name)]
+			quantities = [int(q) for q in re.findall(Item.RE_QUANT, html_slice)]
+			names = [name for name in re.findall(Item.RE_ING, html_slice)][::2]
 
-		return self.ingredients
+			self.ingreds = zip(quantities, names)
+		except:
+			#print "Warning: \"%s\" is an atomic Item." % self.name
+			pass
 
-	def findPrices(self):
-		if self.prices:
-			return self.prices
+	def getFileName(self):
+		return self.name.replace(" ", "_")
 
-		if self.ID == -1:
-			print "Warning: Unable to retrieve Item prices (Invalid ID)."
-			return None
+	def getInfoPath(self):
+		return Item.INFO_PATH + self.getFileName() + ".html"
 
-		self.prices = {"Buy": None, "Sell": None}
+	def getInfoURL(self):
+		return Item.INFO_URL + self.getFileName()
 
-		for price in self.prices:
-			result = re.search(Item.RE_PRICE % price.lower(), self.getHTMLMarket())
-			if result:
-				self.prices[price] = Price(int(result.group(1)))
+	def getMarketPath(self):
+		return Item.MARKET_PATH + self.getFileName() + ".html"
+
+	def getMarketURL(self):
+		return "%s%d-%s" % (Item.MARKET_URL, self.ID, self.name.lower().replace(" ", "-"))
+
+	def getBuyingPrice(self):
+		if not self.buy_cache:
+			if len(self.ingreds) == 0:
+				self.buy_cache = (self.buy, [(1, self.name)])
 			else:
-				print "Warning: Unable to find Item %s price." % price
+				buy_price = Price(0)
+				buy_list = []
 
-		return self.prices
+				for quantity, name in self.ingreds:
+					item = Item(name)
+					sub_price, sub_ingreds = item.getBuyingPrice()
+					buy_price += sub_price.scale(quantity)
 
+					for sub_q, sub_n in sub_ingreds:
+						buy_list.append((sub_q * quantity, sub_n))
 
-	def getHTMLInfo(self):
-		if self.html_info:
-			return self.html_info
+				if buy_price > self.buy:
+					self.buy_cache = (self.buy, [(1, self.name)])
+				else:
+					self.buy_cache = (buy_price, buy_list)
 
-		path = "./HTML/%s_Info.html" % self.name.replace(" ", "_")
-		url = self.url_info
-		self.html_info = self.__getHTML(path, url) 
-		return self.html_info
+		#print "Buying Price of \"%s\" is: %s %s" % (self.name, self.buy_cache[0], self.buy_cache[1])
+		return self.buy_cache
 
-	def getHTMLMarket(self):
-		if self.html_market:
-			return self.html_market
+	def getSellingPrice(self):
+		return self.sell
 
-		if self.ID == -1:
-			print "Warning: Unable to retrieve Item price HTML (Invalid ID)."
-			return None
+	def getTotalTax(self):
+		return self.getListingTax() + self.getExchangeTax()
 
-		if not self.url_market:
-			self.url_market = "%s%d-%s" % (Item.MARKET_BASE_URL, self.ID, self.name.lower().replace(" ", "-"))
-		
-		path = "./HTML/%s_Market.html" % self.name.replace(" ", "_")
-		url = self.url_market
-		self.html_market = self.__getHTML(path, url) 
-		return self.html_market
+	def getListingTax(self):
+		return self.getSellingPrice().getTax(0.05)
 
+	def getExchangeTax(self):
+		return self.getSellingPrice().getTax(0.10)
+
+	def getProfit(self):
+		return self.getSellingPrice() - self.getBuyingPrice()[0] - self.getTotalTax()
+
+	def getName(self):
+		return self.name
 
 	def __getHTML(self, path, url):
 		if not os.path.isfile(path):
 			os.system("curl -o %s %s" % (path, url))
+			time.sleep(2) # This is not supposed to be a DDoS
 
 		return readFile(path).replace("\n", " ")
 
-
-class Product(Item):
-	ELEMENTS = ("Name", "URL", "Ingredients")
-
-	def __init__(self, html):
-		self.html = None
-		self.profit = None
-		self.elements = {}
-
-		parser = AttributeParser()
-		HTML_columns = tagText("td", html)
-
-		try:
-			self.elements["Name"] = parser.findElements(["span", "a"], "title", HTML_columns[0])[0]
-			self.elements["URL"]  = parser.findElements(["span", "a"], "href", HTML_columns[0])[0]
-
-			ingredient_names = parser.findElements(["div", "dl", "dd", "a"], None, HTML_columns[-1])
-			ingredient_quants = parser.findElements(["div", "dl", "dt"], None, HTML_columns[-1])
-			self.elements["Ingredients"] = [(int(q), n) for q, n in zip(ingredient_quants, ingredient_names)]
-
-			for element in Product.ELEMENTS:
-				assert self.elements[element]
-
-		except Exception, e:
-			raise ProductError("HTML does not depict a Product.")
-
-		super(Product, self).__init__(self.elements["Name"])
-
-	def analyze(self):
-		print "Analyzing \"%s\"..." % str(self.elements["Name"])
-
-		if not self.findID():
-			print "Failed to obtain Product ID."
-			return None
-
-		if not self.findPrices():
-			print "Failed to obtain Product prices."
-			return None
-
-		ingredients = []
-		for quantity, name in self.elements["Ingredients"]:
-			ingredient = Item(name)
-			if not ingredient.findID():
-				print "Failed to obtain Ingredient \"%s\" ID." % name
-				return None
-
-			if not ingredient.findPrices():
-				print "Failed to obtain Ingredient \"%s\" prices." % name
-				return None
-
-			parent_price = ingredient.prices["Buy"]
-			print "\tIngredient \"%-25s\" Buy Price = %2d x %s" % (getShortName(name, 25), quantity, parent_price)
-			parent_price.scale(quantity)
-
-			min_price = parent_price
-
-			for subquantity, subname in ingredient.findIngredients():
-				subingredient = Item(subname)
-				if not subingredient.findID():
-					print "Failed to obtain Ingredient \"%s\" ID." % subname
-					return None
-
-				if not subingredient.findPrices():
-					print "Failed to obtain Ingredient \"%s\" prices." % subname
-					return None
-				
-				sub_price = subingredient.prices["Buy"]
-				print "\t\tIngredient \"%-25s\" Buy Price = %2d x %s" % (getShortName(subname, 25), subquantity, sub_price)
-				sub_price.scale(quantity*subquantity)
-
-				min_price = min(min_price, sub_price)
-				if min_price == sub_price:
-					print "\t\tNote: \"%s\" is cheaper than \"%s\"." % (subname, name)
-
-			ingredients.append(min_price)			
-
-		buy = Price(0)
-		for price in ingredients:
-			buy += price
-		
-		sell = self.prices["Sell"]
-
-		list_fee = sell.getTax(0.05)
-		exch_fee = sell.getTax(0.10)
-
-		profit = sell - list_fee - exch_fee - buy
-
-		print "\n\tProduct Buy Price = %s" % buy
-		print "\tProduct Sell Price = %s\n" % sell
-
-		print "\tListing Fee = %s" % list_fee
-		print "\tExchange Fee = %s\n" % exch_fee
-
-		print "\tProfit = %s" % profit
-		print "Analysis Complete\n"
-
-		self.profit = profit
-
-	def getElement(self, att):
-		if att not in self.elements:
-			return "Error: \"%s\" refers to an unknown element." % att
-		else:
-			return self.elements[att]
-
-	def getElements(self):
-		return self.elements
-
-	def getHTMLName(self):
-		return self.html_name
-
-	def getName(self):
-		return self.elements["Name"]
-
-	def getURL(self):
-		return self.elements["URL"]
-
 	def __lt__(self, other):
-		if not self.profit or self.profit < other.profit:
-			return True
-		else:
-			return False
+		return self.getProfit() < other.getProfit()
 
 	def __str__(self):
-		s = "Product (ID %d)\n" % self.ID
-		for att in sorted(self.elements):
-			s += "\t%12s: %s\n" % (att, self.elements[att])
-		
-		if self.ID != -1:
-			s += "\n"
-			for p in sorted(self.prices):
-				s += "\t%12s: %s\n" % (p, self.prices[p])
-
-		return s
+		return    "Item (ID = %d)\n" % self.ID \
+				+ "    Name: %s\n" % self.name \
+				+ "    Raw Buy: %s / Raw Sell: %s\n" % (self.buy, self.sell) \
+				+ "    Raw Ingredients: %s\n" % self.ingreds \
+				+ "    Optimal Ingredients: %s\n" % self.getBuyingPrice()[1] \
+				+ "    Buy Price: %s\n" % self.getBuyingPrice()[0] \
+				+ "    Sell Price: %s\n" % self.getSellingPrice() \
+				+ "    Taxation: %s\n" % self.getTotalTax() \
+				+ "    Profit: %s" % self.getProfit()
