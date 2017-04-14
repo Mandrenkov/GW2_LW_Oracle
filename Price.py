@@ -16,6 +16,9 @@ class Price:
 	def getTax(self, tax):
 		return Price(int(self.price*tax))
 
+	def isPositive(self):
+		return self.price >= 0
+
 	def scale(self, factor):
 		return Price(int(self.price*factor))
 

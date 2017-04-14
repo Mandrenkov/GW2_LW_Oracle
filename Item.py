@@ -1,6 +1,7 @@
 from Price import *
 from Util import *
 
+import random
 import re
 import time
 
@@ -88,26 +89,30 @@ class Item:
 		return "%s%d-%s" % (Item.MARKET_URL, self.ID, self.name.lower().replace(" ", "-"))
 
 	def getBuyingPrice(self):
-		if not self.buy_cache:
+		def calculatePrice():
+			if self.buy_cache:
+				return self.buy_cache
+
 			if len(self.ingreds) == 0:
-				self.buy_cache = (self.buy, [(1, self.name)])
+				return (self.buy, [(1, self.name)])
+
+			buy_price = Price(0)
+			buy_list = []
+
+			for quantity, name in self.ingreds:
+				item = Item(name)
+				sub_price, sub_ingreds = item.getBuyingPrice()
+				buy_price += sub_price.scale(quantity)
+
+				for sub_q, sub_n in sub_ingreds:
+					buy_list.append((sub_q * quantity, sub_n))
+
+			if buy_price > self.buy:
+				return (self.buy, [(1, self.name)])
 			else:
-				buy_price = Price(0)
-				buy_list = []
+				return (buy_price, buy_list)
 
-				for quantity, name in self.ingreds:
-					item = Item(name)
-					sub_price, sub_ingreds = item.getBuyingPrice()
-					buy_price += sub_price.scale(quantity)
-
-					for sub_q, sub_n in sub_ingreds:
-						buy_list.append((sub_q * quantity, sub_n))
-
-				if buy_price > self.buy:
-					self.buy_cache = (self.buy, [(1, self.name)])
-				else:
-					self.buy_cache = (buy_price, buy_list)
-
+		self.buy_cache = calculatePrice()
 		#print "Buying Price of \"%s\" is: %s %s" % (self.name, self.buy_cache[0], self.buy_cache[1])
 		return self.buy_cache
 
@@ -131,8 +136,10 @@ class Item:
 
 	def __getHTML(self, path, url):
 		if not os.path.isfile(path):
-			os.system("curl -o %s %s" % (path, url))
-			time.sleep(2) # This is not supposed to be a DDoS
+			print "Downloading \"%s\" ..." % url,
+			os.system("wget -q -O %s %s" % (path, url))
+			time.sleep(random.randint(1, 2)) # This is *not* a DoS attack
+			print "Done."
 
 		return readFile(path).replace("\n", " ")
 
