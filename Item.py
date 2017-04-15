@@ -1,3 +1,8 @@
+# Author: Mikhail Andrenkov
+# Source: https://github.com/Mandrenkov/GW2_LW_Oracle
+
+# Imports
+
 from Price import *
 from Util import *
 
@@ -19,7 +24,7 @@ class Item:
 	INFO_PATH = "./HTML/Info/"
 	MARKET_PATH = "./HTML/Market/"
 	
-	def __init__(self, name):
+	def __init__(self, name, update = True):
 		self.name = name
 		self.ID = -1
 		self.buy = None
@@ -27,9 +32,10 @@ class Item:
 		self.sell = None
 		self.ingreds = []
 
-		self.__initID()
-		self.__initPrices()
-		self.__initIngreds()
+		if update:
+			self.__initID()
+			self.__initPrices()
+			self.__initIngreds()
 
 	def __initID(self):
 		html = self.__getHTML(self.getInfoPath(), self.getInfoURL())

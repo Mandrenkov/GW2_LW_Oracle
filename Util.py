@@ -1,3 +1,8 @@
+# Author: Mikhail Andrenkov
+# Source: https://github.com/Mandrenkov/GW2_LW_Oracle
+
+# Imports
+
 from ctypes import windll, c_int, byref
 
 import os

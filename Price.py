@@ -1,3 +1,8 @@
+# Author: Mikhail Andrenkov
+# Source: https://github.com/Mandrenkov/GW2_LW_Oracle
+
+# Imports
+
 from Util import *
 
 class Price:
