@@ -108,7 +108,7 @@ class Item:
 			for quantity, name in self.ingreds:
 				item = Item(name)
 				sub_price, sub_ingreds = item.getBuyingPrice()
-				buy_price += sub_price.scale(quantity)
+				buy_price += sub_price.getFactor(quantity)
 
 				for sub_q, sub_n in sub_ingreds:
 					buy_list.append((sub_q * quantity, sub_n))
@@ -129,10 +129,10 @@ class Item:
 		return self.getListingTax() + self.getExchangeTax()
 
 	def getListingTax(self):
-		return self.getSellingPrice().getTax(0.05)
+		return self.getSellingPrice().getFactor(0.05)
 
 	def getExchangeTax(self):
-		return self.getSellingPrice().getTax(0.10)
+		return self.getSellingPrice().getFactor(0.10)
 
 	def getProfit(self):
 		return self.getSellingPrice() - self.getBuyingPrice()[0] - self.getTotalTax()
