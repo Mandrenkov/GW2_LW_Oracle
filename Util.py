@@ -41,6 +41,7 @@ class Console:
 		print self.insert(message, colour)
 
 	# Enables ANSI terminal colours on Windows
+	# Credit: https://bugs.python.org/issue29059
 	def __enableANSI(self):
 		if platform.system() == "Windows":
 			stdout_handle = windll.kernel32.GetStdHandle(c_int(-11))
