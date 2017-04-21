@@ -31,10 +31,8 @@ def parseArguments():
 	
 	# Set description
 	parser = argparse.ArgumentParser(description = "This program displays a summary of GW2 leatherworking TP prices.")
-	
 	# Add options	
 	parser.add_argument("-c", "--clear_cache", help = "Clears the TP cache", action = "store_true")
-
 	# Retrieve arguments
 	args = parser.parse_args()
 

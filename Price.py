@@ -52,6 +52,7 @@ class Price:
 	def __str__(self):
 		s = "" if self.price >= 0 else "-"
 
+		# Ignore price negation
 		price = self.price
 		self.price = abs(self.price)
 		s += "%02d.%02d.%02d" % (self.getGold(), self.getSilver(), self.getCopper())
