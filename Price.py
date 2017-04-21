@@ -5,6 +5,7 @@
 
 from Util import *
 
+
 # The Price class denotes the value of a particular Item.
 class Price:
 	# Constructs a Price object.

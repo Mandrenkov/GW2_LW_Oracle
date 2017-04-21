@@ -6,13 +6,18 @@
 from Util import *
 from Item import *
 
+
+# The Table class displays a summary of the given list of Items. 
 class Table:
+	# Terminal width
 	WIDTH = 90
 
+	# Constructs a Table object with the given list of items
 	def __init__(self, items):
 		self.items = reversed(sorted(items))
 		self.console = Console("White")
 
+	# Displays the Item summary.
 	def display(self):
 		c = self.console
 		self.__displayHeader(c)
@@ -21,11 +26,14 @@ class Table:
 			self.__displayItemIngreds(c, item)
 		c.writeln("-"*Table.WIDTH)
 			
+	# Displays the header row of the summary table.
 	def __displayHeader(self, c):
-		c.writeln("-"*Table.WIDTH)
+		# Width of header string should be the same as WIDTH
+		c.writeln("-"*Table.WIDTH)	
 		c.writeln("|          Name             Profit      Sell       Buy           Optimal Ingredients     |")
 		c.writeln("-"*Table.WIDTH)
 
+	# Displays a row denoting to the given Item.
 	def __displayItem(self, c, item):
 		row = c.insert("|")
 
@@ -52,7 +60,9 @@ class Table:
 		row += c.insert("|")
 		print row
 
+	# Displays the optimal ingredients to acquire the given Item. 
 	def __displayItemIngreds(self, c, item):
+		# The first ingredient is already displayed when __displayItem() is called.
 		for quantity, ingred in item.getBuyingPrice()[1][1:]:
 			row = c.insert("|")
 			row += " "*58

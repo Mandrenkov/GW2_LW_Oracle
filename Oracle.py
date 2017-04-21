@@ -20,7 +20,7 @@ args = None
 
 LW_PATH = "./HTML/Static/LW_Wiki.html"
 RE_ITEM = re.compile(r'"([0-9]+ Slot [A-Za-z]+ Leather Pack)"')
-RE_ITEM = re.compile(r'"([0-9A-Za-z\s]+? Pack)"')
+#RE_ITEM = re.compile(r'"([0-9A-Za-z\s]+? Pack)"')
 
 
 # Global Functions
