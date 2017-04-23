@@ -47,16 +47,15 @@ def retrieveItems():
 def main():
 	parseArguments()
 
+	# Clear cache if specified
+	if args.clear_cache:
+		os.system("rm %s/*" % Item.MARKET_PATH)
+
 	item_names = retrieveItems()
 	items = []
 
 	for name in item_names:
 		try:
-			# Clear cache if specified
-			if args.clear_cache:
-				item = Item(name, False)
-				os.system("rm %s" % item.getMarketPath())
-
 			items.append(Item(name))
 		# Unable to parse Item
 		except Exception, e:
