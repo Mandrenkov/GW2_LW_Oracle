@@ -66,6 +66,6 @@ class Table:
 		for quantity, ingred in item.getBuyingPrice()[1][1:]:
 			row = c.insert("|")
 			row += " "*58
-			row += c.insert(" %2d x %-23s " % (quantity, ingred))
+			row += c.insert(" %2d x %-23s " % (quantity, getShortName(ingred, 23)))
 			row += c.insert("|")
 			print row
