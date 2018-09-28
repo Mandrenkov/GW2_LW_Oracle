@@ -8,7 +8,9 @@ from Util import *
 
 import random
 import re
+import sys
 import time
+import urllib2
 
 
 # The Item class represents an item from the perspective of the GW2 TP. 
@@ -34,6 +36,8 @@ class Item:
 	INFO_PATH = "./HTML/Info/"
 	# Path to the directory containing an Item's market price HTML page.
 	MARKET_PATH = "./HTML/Market/"
+	# Path to the directory containing the Item listing HTML page.
+	STATIC_PATH = "./HTML/Static/"
 	
 	# Constructs a new Item object with the given name.
 	# If update is set to True, it will also fetch its ID,
@@ -190,10 +194,18 @@ class Item:
 	# been downloaded, the existing results page is used.
 	def __getHTML(self, path, url):
 		if not os.path.isfile(path):
-			print "Downloading \"%s\" ..." % url,
-			os.system("wget -q -O %s %s" % (path, url))
-			time.sleep(random.randint(1, 2)) # This is *not* a DoS attack
-			print "Done."
+			sys.stdout.write("Fetching '%s'..." % url)
+			request = urllib2.Request(url)
+			request.add_header("User-agent", "Custom/4.7.0")
+			content = urllib2.urlopen(request).read()
+			print "done"
+
+			# This is *not* a DoS attack
+			delta = 0.5 + random.random()/2
+			time.sleep(delta)
+
+			with open(path, "w") as fout:
+				fout.write(content)
 
 		return readFile(path).replace("\n", " ")
 
